@@ -3,6 +3,18 @@
 
 # barkdroid
 
+<!-- bilingual-intro -->
+**中文**：Bark 兼容的 Android 推送客户端：沿用 Bark 的 API 格式，走极光推送（JPush）送达，不依赖 FCM/Google 服务。自建服务端、自填 AppKey，无公共服务、无共享凭据。
+
+**English**: Bark-compatible push client for Android. Keeps the Bark API format but delivers through JPush, so it works without FCM or Google Play Services. You bring your own credentials and self-host the server.
+
+| 项目 / Item | 说明 / Note |
+|---|---|
+| 平台 / Platform | Android 8.0+ |
+| 安装 / Install | [Releases](https://github.com/JLzsonit/barkdroid/releases/latest) · APK（debug 构建）/ APK (debug build) |
+| 许可证 / License | MIT |
+
+
 **Bark-compatible Android push client for self-hosters in China.**
 
 Send push notifications to your Android phone using the Bark API format — via JPush (极光推送), no FCM required. You bring your own JPush credentials, build your own APK, and self-host the server. No public service, no shared credentials.
