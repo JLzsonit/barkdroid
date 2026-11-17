@@ -1,0 +1,21 @@
+// 固定签名配置：保证每次 CI 出的包签名一致，可以直接覆盖升级。
+// 密钥库 barkdroid.p12 与密码仅存于本私有仓库，仅用于个人自用应用的升级连续性。
+android {
+    signingConfigs {
+        create("stable") {
+            storeFile = file("../barkdroid.p12")
+            storePassword = "barkdroid2026"
+            keyAlias = "barkdroid"
+            keyPassword = "barkdroid2026"
+            storeType = "pkcs12"
+        }
+    }
+    buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("stable")
+        }
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("stable")
+        }
+    }
+}

@@ -1,0 +1,22 @@
+# Server
+server/config.yaml
+server/data/
+server/barkdroid
+
+# Android
+android/config.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/*.iml
+android/.idea/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# Local build output
+dist/

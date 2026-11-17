@@ -1,0 +1,113 @@
+name: Build barkdroid
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  apk:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # ubuntu-latest 自带 Android SDK（ANDROID_HOME 已配置、许可已接受），
+      # 无需 android-actions/setup-android（它会尝试安装已下线的 'tools' 包而失败）。
+
+      - name: Generate config.properties (only when secrets/vars provided)
+        env:
+          APPLICATION_ID: ${{ vars.APPLICATION_ID }}
+          JPUSH_APP_KEY: ${{ secrets.JPUSH_APP_KEY }}
+          SERVER_BASE_URL: ${{ vars.SERVER_BASE_URL }}
+        run: |
+          # AppKey 已提交在仓库内（官方设计上可嵌入 APK）；
+          # 仅当显式配置了 Secrets/Vars 时才覆盖，避免把已有配置清空。
+          if [ -n "$JPUSH_APP_KEY" ] || [ -n "$APPLICATION_ID" ] || [ -n "$SERVER_BASE_URL" ]; then
+            cat > android/config.properties <<EOF
+          APPLICATION_ID=${APPLICATION_ID:-com.zsonit.barkdroid}
+          JPUSH_APP_KEY=${JPUSH_APP_KEY}
+          SERVER_BASE_URL=${SERVER_BASE_URL:-}
+          SERVER_TOKEN=
+          EOF
+            echo "config.properties generated from secrets/vars"
+          else
+            echo "Using committed android/config.properties"
+            cat android/config.properties
+          fi
+
+      - name: Restore keystore (optional, for signed release)
+        env:
+          KS_BASE64: ${{ secrets.KS_BASE64 }}
+          KS_PASS: ${{ secrets.KS_PASS }}
+          KS_ALIAS: ${{ secrets.KS_ALIAS }}
+        run: |
+          if [ -n "$KS_BASE64" ]; then
+            echo "$KS_BASE64" | base64 -d > android/barkdroid.keystore
+            cat > android/signing.gradle <<EOF
+          android {
+              signingConfigs {
+                  create("release") {
+                      storeFile = file("../barkdroid.keystore")
+                      storePassword = "$KS_PASS"
+                      keyAlias = "$KS_ALIAS"
+                      keyPassword = "$KS_PASS"
+                  }
+              }
+              buildTypes {
+                  getByName("release") {
+                      signingConfig = signingConfigs.getByName("release")
+                  }
+              }
+          }
+          EOF
+            echo "SIGNED_RELEASE=true" >> "$GITHUB_ENV"
+          else
+            echo "SIGNED_RELEASE=false" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build APK
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          if [ "$SIGNED_RELEASE" = "true" ]; then
+            ./gradlew assembleRelease --no-daemon
+          else
+            ./gradlew assembleDebug --no-daemon
+          fi
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: barkdroid-apk
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+  server:
+    name: Build server binary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: server/go.mod
+
+      - name: Build linux/amd64 binary
+        working-directory: server
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o barkdroid-linux-amd64 .
+
+      - name: Upload server binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: barkdroid-server
+          path: server/barkdroid-linux-amd64
