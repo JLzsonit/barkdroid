@@ -1,3 +1,6 @@
+<!-- dl-banner -->
+> **下载安装**：[下载 APK（v2.2.0）](https://github.com/JLzsonit/barkdroid/releases/latest) · debug 构建，自用
+
 # barkdroid
 
 **Bark-compatible Android push client for self-hosters in China.**
