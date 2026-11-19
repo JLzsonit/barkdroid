@@ -21,6 +21,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -44,8 +45,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -243,15 +248,43 @@ private fun PanelCard(content: @Composable ColumnScope.() -> Unit) {
 
 /** 品牌圆角小 logo */
 @Composable
-private fun BrandMark(size: Dp = 42.dp, iconSize: Dp = 22.dp) {
+private fun BrandMark(size: Dp = 42.dp) {
     Box(
         modifier = Modifier
             .size(size)
-            .clip(RoundedCornerShape(13.dp))
-            .background(Brush.linearGradient(listOf(Color(0xFF5B4BD4), AccentSoft))),
-        contentAlignment = Alignment.Center,
+            .clip(RoundedCornerShape(size * 0.31f))
+            .background(
+                Brush.linearGradient(
+                    listOf(Color(0xFF7A66F0), Color(0xFF4C39B8), Color(0xFF201A46))
+                )
+            ),
     ) {
-        Icon(Icons.Filled.Email, contentDescription = null, tint = Color.White, modifier = Modifier.size(iconSize))
+        // 与桌面图标同款的双气泡：后层透光玻璃 + 前层实心气泡带尾巴
+        Canvas(Modifier.fillMaxSize()) {
+            val k = this.size.width / 108f
+            fun dp(v: Float) = v * k
+            drawRoundRect(
+                color = Color.White.copy(alpha = 0.20f),
+                topLeft = Offset(dp(30f), dp(30f)),
+                size = Size(dp(29f), dp(23.5f)),
+                cornerRadius = CornerRadius(dp(8.2f)),
+            )
+            drawRoundRect(
+                color = Color.White,
+                topLeft = Offset(dp(36.5f), dp(44.5f)),
+                size = Size(dp(38f), dp(30f)),
+                cornerRadius = CornerRadius(dp(11f)),
+            )
+            drawPath(
+                color = Color.White,
+                path = Path().apply {
+                    moveTo(dp(46.5f), dp(72f))
+                    quadraticBezierTo(dp(41.5f), dp(76.5f), dp(40.2f), dp(80.2f))
+                    quadraticBezierTo(dp(44.8f), dp(77.6f), dp(50.5f), dp(73.5f))
+                    close()
+                },
+            )
+        }
     }
 }
 
@@ -419,7 +452,7 @@ private fun StatusScreen() {
             BrandMark()
             Spacer(Modifier.width(12.dp))
             Column {
-                Text("短信接收端", style = MaterialTheme.typography.titleLarge)
+                Text("接收苹果短信", style = MaterialTheme.typography.titleLarge)
                 Text("iPhone 短信实时转发到这台手机", fontSize = 11.sp, color = TextMid)
             }
         }
@@ -832,7 +865,7 @@ private fun SettingsScreen() {
                         val r = withContext(Dispatchers.IO) {
                             NtfyClient.publishTest(
                                 context,
-                                "短信接收端 · 自检",
+                                "接收苹果短信 · 自检",
                                 "这条能收到，说明 iPhone → 安卓 的通道已经打通了",
                             )
                         }
@@ -857,7 +890,7 @@ private fun SettingsScreen() {
                         context,
                         PushMsg(
                             id = "local-test-${System.currentTimeMillis()}",
-                            title = "短信接收端 · 通知测试",
+                            title = "接收苹果短信 · 通知测试",
                             body = "如果你看到了这条通知、有声音或振动，说明通知功能正常，问题不在通知，而在接收链路",
                             time = System.currentTimeMillis(),
                         ),

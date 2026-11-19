@@ -24,17 +24,13 @@ jobs:
       - name: Generate config.properties (only when secrets/vars provided)
         env:
           APPLICATION_ID: ${{ vars.APPLICATION_ID }}
-          JPUSH_APP_KEY: ${{ secrets.JPUSH_APP_KEY }}
-          SERVER_BASE_URL: ${{ vars.SERVER_BASE_URL }}
+          NTFY_SERVER: ${{ vars.NTFY_SERVER }}
         run: |
-          # AppKey 已提交在仓库内（官方设计上可嵌入 APK）；
-          # 仅当显式配置了 Secrets/Vars 时才覆盖，避免把已有配置清空。
-          if [ -n "$JPUSH_APP_KEY" ] || [ -n "$APPLICATION_ID" ] || [ -n "$SERVER_BASE_URL" ]; then
+          # 仅当显式配置了 Secrets/Vars 时才覆盖，避免把仓库内已有的 config.properties 清空。
+          if [ -n "$APPLICATION_ID" ] || [ -n "$NTFY_SERVER" ]; then
             cat > android/config.properties <<EOF
           APPLICATION_ID=${APPLICATION_ID:-com.zsonit.barkdroid}
-          JPUSH_APP_KEY=${JPUSH_APP_KEY}
-          SERVER_BASE_URL=${SERVER_BASE_URL:-}
-          SERVER_TOKEN=
+          NTFY_SERVER=${NTFY_SERVER:-https://ntfy.sh}
           EOF
             echo "config.properties generated from secrets/vars"
           else
@@ -90,24 +86,3 @@ jobs:
             android/app/build/outputs/apk/release/*.apk
             android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
-
-  server:
-    name: Build server binary
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: server/go.mod
-
-      - name: Build linux/amd64 binary
-        working-directory: server
-        run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags "-s -w" -o barkdroid-linux-amd64 .
-
-      - name: Upload server binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: barkdroid-server
-          path: server/barkdroid-linux-amd64

@@ -21,8 +21,8 @@ android {
         // 34 而不是 35：Android 15 对 targetSdk 35 应用的 dataSync 前台服务有 6 小时/天限制，
         // 而本 App 需要 7×24 常驻接收短信，保持 34 可避免该限制。
         targetSdk = 34
-        versionCode = 11
-        versionName = "2.2.0"
+        versionCode = 12
+        versionName = "2.3.0"
     }
 
     // Read config from config.properties (user-provided)

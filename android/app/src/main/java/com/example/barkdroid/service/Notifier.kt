@@ -90,7 +90,7 @@ object Notifier {
         )
         return NotificationCompat.Builder(ctx, CH_SERVICE)
             .setSmallIcon(R.drawable.ic_stat_sms)
-            .setContentTitle("短信接收端正在运行")
+            .setContentTitle("接收苹果短信正在运行")
             .setContentText(text)
             .setOngoing(true)
             .setSilent(true)

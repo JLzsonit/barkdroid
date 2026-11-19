@@ -9,8 +9,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        // JPush SDK repository
-        maven { url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots") }
     }
 }
 

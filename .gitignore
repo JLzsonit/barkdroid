@@ -20,3 +20,6 @@ android/.idea/
 
 # Local build output
 dist/
+
+# Icon/preview generation artifacts
+preview/
