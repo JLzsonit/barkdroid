@@ -31,6 +31,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -679,6 +680,14 @@ private fun MessagesScreen() {
     val context = LocalContext.current
     val list = Store.messages
 
+    // 详情二级页：非空时整页显示
+    var opened by remember { mutableStateOf<PushMsg?>(null) }
+    val detail = opened
+    if (detail != null) {
+        MessageDetailScreen(detail) { opened = null }
+        return
+    }
+
     Column(Modifier.fillMaxSize()) {
         Row(
             Modifier
@@ -740,7 +749,7 @@ private fun MessagesScreen() {
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 items(list, key = { it.id.ifEmpty { it.time.toString() } }) { msg ->
-                    MessageCard(msg)
+                    MessageCard(msg) { opened = msg }
                 }
             }
         }
@@ -748,9 +757,12 @@ private fun MessagesScreen() {
 }
 
 @Composable
-private fun MessageCard(msg: PushMsg) {
+private fun MessageCard(msg: PushMsg, onClick: () -> Unit) {
     Card(
-        Modifier.fillMaxWidth(),
+        Modifier
+            .fillMaxWidth()
+            .clip(CardShape)
+            .clickable(onClick = onClick),
         shape = CardShape,
         colors = CardDefaults.cardColors(containerColor = Card1),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -793,6 +805,8 @@ private fun MessageCard(msg: PushMsg) {
                         fontSize = 10.5.sp,
                         color = Color(0xFF6B6B80),
                     )
+                    Spacer(Modifier.width(4.dp))
+                    Text("›", fontSize = 15.sp, color = Color(0xFF4A4A5E))
                 }
                 if (msg.body.isNotEmpty()) {
                     Spacer(Modifier.height(4.dp))
@@ -801,6 +815,192 @@ private fun MessageCard(msg: PushMsg) {
             }
         }
     }
+}
+
+/* ============================ 短信详情二级页 ============================ */
+
+@Composable
+private fun MessageDetailScreen(msg: PushMsg, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val body = msg.body.ifEmpty { msg.title }
+    val code = remember(msg.id, msg.body) { extractVerificationCode(body) }
+
+    Column(Modifier.fillMaxSize()) {
+        // 顶栏：返回 + 标题 + 时间
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回", tint = TextHigh)
+            }
+            Spacer(Modifier.width(6.dp))
+            Column {
+                Text("短信详情", style = MaterialTheme.typography.titleLarge)
+                Text(formatTime(msg.time), fontSize = 11.5.sp, color = TextMid)
+            }
+        }
+
+        Column(
+            Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+        ) {
+            // 发件人 + 正文
+            Card(
+                Modifier.fillMaxWidth(),
+                shape = CardShape,
+                colors = CardDefaults.cardColors(containerColor = Card1),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            ) {
+                Column(Modifier.padding(18.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(Accent.copy(alpha = 0.18f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                msg.title.take(1).ifEmpty { "?" },
+                                color = AccentSoft,
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                msg.title.ifEmpty { "未知发件人" },
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp,
+                                color = TextHigh,
+                            )
+                            Text(
+                                if (msg.body.isBlank()) "无正文" else "转发短信",
+                                fontSize = 11.sp,
+                                color = Color(0xFF6B6B80),
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    HorizontalDivider(color = Color(0xFF262634))
+                    Spacer(Modifier.height(14.dp))
+
+                    // 正文可长按自由选中
+                    SelectionContainer {
+                        Text(
+                            msg.body.ifEmpty { "（这条消息没有正文）" },
+                            fontSize = 14.5.sp,
+                            lineHeight = 23.sp,
+                            color = TextHigh.copy(alpha = 0.92f),
+                        )
+                    }
+                }
+            }
+
+            if (code != null) {
+                Spacer(Modifier.height(12.dp))
+                Card(
+                    Modifier.fillMaxWidth(),
+                    shape = CardShape,
+                    colors = CardDefaults.cardColors(containerColor = Accent.copy(alpha = 0.13f)),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                ) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("识别到验证码", fontSize = 11.5.sp, color = AccentSoft)
+                            Spacer(Modifier.height(3.dp))
+                            Text(
+                                code,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 3.sp,
+                                color = TextHigh,
+                            )
+                        }
+                        TextButton(onClick = {
+                            clipboard.setText(AnnotatedString(code))
+                            Toast.makeText(context, "验证码已复制", Toast.LENGTH_SHORT).show()
+                        }) { Text("复制", color = AccentSoft) }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+        }
+
+        // 底部操作
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Button(
+                onClick = {
+                    val c = code
+                    if (c != null) {
+                        clipboard.setText(AnnotatedString(c))
+                        Toast.makeText(context, "验证码已复制", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "这条短信里没找到验证码", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(46.dp),
+                shape = FieldShape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (code != null) Accent else Card2,
+                    contentColor = if (code != null) Color.White else TextMid,
+                ),
+            ) {
+                Text("复制验证码", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+            OutlinedButton(
+                onClick = {
+                    clipboard.setText(AnnotatedString(msg.body))
+                    Toast.makeText(context, "全文已复制", Toast.LENGTH_SHORT).show()
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .height(46.dp),
+                shape = FieldShape,
+                border = BorderStroke(1.dp, Color(0xFF2E2E40)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextHigh),
+            ) {
+                Text("复制全文", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+/**
+ * 从短信正文里提取验证码。
+ * 优先匹配「验证码 / 校验码 / 动态码 / code」之后紧跟的 4–8 位数字，
+ * 其次退回「独立成段的 6 位数字」，都找不到返回 null。
+ */
+private fun extractVerificationCode(text: String): String? {
+    if (text.isBlank()) return null
+    val labeled = Regex(
+        """(?:验证码|校验码|动态码|确认码|激活码|安全码|动态密码|口令|code|otp)\D{0,10}(?<!\d)(\d{4,8})(?!\d)""",
+        RegexOption.IGNORE_CASE,
+    )
+    labeled.find(text)?.let { return it.groupValues[1] }
+    Regex("""(?<!\d)(\d{6})(?!\d)""").find(text)?.let { return it.groupValues[1] }
+    return null
 }
 
 /* ============================ 设置页 ============================ */
